@@ -1,145 +1,81 @@
-// What problem useState solves
-
-// Core idea behind useState (no magic)
-
-// Minimal architecture we need
-
-// Full working code (tiny but powerful)
-
-// Step-by-step execution flow
-
-// 1️⃣ What problem does useState solve?
-
-// Without state, your functional components are static.
-
-function Counter() {
-  return {
-    type: "h1",
-    props: {},
-    children: "Count: 0"
-  };
-}
-
-// renders once
-
-// never changes
-
-// cannot respond to clicks
-
-// We need:
-
-// data that persists between renders
-
-// a way to re-render UI when data changes
-
-// 2️⃣ Core idea of useState 
-
-// At its heart, useState is just:
-
-// an array to store values
-
-// an index to know which state belongs to which call
-
-// a setter that:
-
-// updates state
-
-// triggers re-render
-
-
-
-// 3️⃣ Minimal architecture we need
-
-// We’ll create 3 global things (same idea React uses internally):
-
-
+/*********************************
+ * GLOBAL RENDER STATE
+ *********************************/
 let stateStore = [];
 let stateIndex = 0;
+
 let rootElement = null;
 let rootContainer = null;
 
-
-// Why?
-
-// stateStore → remembers state values
-
-// stateIndex → maps useState calls in order
-
-// rootElement → what to re-render
-
-// rootContainer → where to re-render
-
-
-// 4️⃣ Implementing useState
-// ✅ Our custom useState
-
-
+/*********************************
+ * useState IMPLEMENTATION
+ *********************************/
 function useState(initialValue) {
     const currentIndex = stateIndex;
 
-    // Initialize state only once
     if (stateStore[currentIndex] === undefined) {
         stateStore[currentIndex] = initialValue;
     }
 
     function setState(newValue) {
         stateStore[currentIndex] = newValue;
-
-        // 🔁 trigger re-render
-        stateIndex = 0;
-        rootContainer.innerHTML = "";
-        customRender(rootElement, rootContainer);
+        renderRoot();
     }
 
     stateIndex++;
     return [stateStore[currentIndex], setState];
 }
 
+/*********************************
+ * ROOT RENDERER
+ *********************************/
+function renderRoot() {
+    stateIndex = 0;
+    rootContainer.innerHTML = "";
+    customRender(rootElement, rootContainer);
+}
 
-
-// 5️⃣ Update customRender (small but important)
-
-// When rendering functional components, reset stateIndex once per render.
-let isInitialRender = true;
-
+/*********************************
+ * CUSTOM RENDER FUNCTION
+ *********************************/
 function customRender(reactElement, container) {
 
-    // ✅ SET ROOT ONLY ONCE
-    if (isInitialRender) {
+    // Save root once
+    if (!rootElement) {
         rootElement = reactElement;
         rootContainer = container;
-        isInitialRender = false;
     }
 
     // FUNCTIONAL COMPONENT
     if (typeof reactElement.type === "function") {
-        stateIndex = 0;
-        const renderedElement = reactElement.type(reactElement.props);
-        customRender(renderedElement, container);
+        const childElement = reactElement.type(reactElement.props || {});
+        customRender(childElement, container);
         return;
     }
 
+    // CREATE DOM NODE
     const domElement = document.createElement(reactElement.type);
 
-    // Props & events
-    for (const prop in reactElement.props) {
+    // HANDLE PROPS & EVENTS
+    const props = reactElement.props || {};
+    for (const prop in props) {
         if (prop.startsWith("on")) {
             const eventType = prop.slice(2).toLowerCase();
-            domElement.addEventListener(eventType, reactElement.props[prop]);
+            domElement.addEventListener(eventType, props[prop]);
         } else {
-            domElement.setAttribute(prop, reactElement.props[prop]);
+            domElement.setAttribute(prop, props[prop]);
         }
     }
 
-    // Children
+    // HANDLE CHILDREN
     const children = reactElement.children;
 
     if (typeof children === "string") {
         domElement.textContent = children;
-    } 
+    }
     else if (Array.isArray(children)) {
         children.forEach(child => customRender(child, domElement));
-    } 
+    }
     else if (typeof children === "object" && children !== null) {
         customRender(children, domElement);
     }
@@ -147,11 +83,9 @@ function customRender(reactElement, container) {
     container.appendChild(domElement);
 }
 
-
-
-// 6️⃣ Example: Stateful Counter Component
-
-
+/*********************************
+ * COMPONENTS
+ *********************************/
 function Counter() {
     const [count, setCount] = useState(0);
 
@@ -159,38 +93,40 @@ function Counter() {
         type: "button",
         props: {
             onClick: () => setCount(count + 1),
-            style: "padding:10px;font-size:18px"
+            style: "padding:10px;margin:10px;font-size:18px"
         },
-        children: `Count: ${count}`
+        children: `Increment: ${count}`
     };
 }
 
-const App = {
-    type: Counter,
-    props: {},
-    children: null
-};
+function DecrementCounter() {
+    const [count, setCount] = useState(0);
 
-customRender(App, document.getElementById("root"));
+    return {
+        type: "button",
+        props: {
+            onClick: () => setCount(count - 1),
+            style: "padding:10px;margin:10px;font-size:18px"
+        },
+        children: `Decrement: ${count}`
+    };
+}
 
+function App() {
+    return {
+        type: "div",
+        props: { style: "display:flex;gap:10px" },
+        children: [
+            { type: Counter, props: {}, children: null },
+            { type: DecrementCounter, props: {}, children: null }
+        ]
+    };
+}
 
-// 7️⃣ Step-by-step execution flow (IMPORTANT)
-// 🔹 Initial render
-
-// customRender(App)
-
-// Counter() is called
-
-// useState(0):
-
-// stateStore[0] = 0
-
-// returns [0, setCount]
-
-// Button rendered → Count: 0
-
-
-// useState
-//  ├─ stores value
-//  ├─ returns setter
-//  └─ setter triggers re-render
+/*********************************
+ * INITIAL RENDER
+ *********************************/
+customRender(
+    { type: App, props: {}, children: null },
+    document.getElementById("root")
+);

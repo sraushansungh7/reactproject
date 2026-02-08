@@ -1,16 +1,14 @@
-import { useState } from 'react'
-
-import Login from './login/Login'
+import { useState, useCallback, useEffect, useRef } from "react";
+import CurreChage from "./CurreChage";
 
 function App() {
-  const [count, setCount] = useState(0)
+ 
 
   return (
     <>
-     
-     <Login/>
+      <CurreChage/>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
